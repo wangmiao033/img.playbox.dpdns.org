@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "素材猎手 - Image Hunter",
+  "short_name": "素材猎手",
+  "version": "0.2.0",
+  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；官网与后端预留 playbox.dpdns.org 路径。",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "素材猎手"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "storage"
+  ],
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

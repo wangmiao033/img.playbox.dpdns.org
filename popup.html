@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>素材猎手</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="assets/icon48.png" alt="" />
+        </div>
+        <div class="brand-text">
+          <h1>素材猎手</h1>
+          <p id="pageStatus">正在扫描当前网页…</p>
+        </div>
+        <button id="refreshBtn" class="icon-btn" title="重新扫描" type="button">↻</button>
+      </header>
+
+      <section class="filter-panel">
+        <div id="formatTabs" class="tabs" aria-label="图片格式筛选"></div>
+        <div class="size-row">
+          <div class="size-label">
+            <span>Min size</span>
+            <strong id="minSizeValue">10px</strong>
+          </div>
+          <input id="minSize" type="range" min="0" max="1000" step="10" value="10" />
+        </div>
+      </section>
+
+      <section class="action-row">
+        <button id="selectVisibleBtn" class="soft-btn" type="button">全选当前</button>
+        <button id="downloadSelectedBtn" class="primary-btn" type="button">下载选中</button>
+        <button id="downloadVisibleBtn" class="soft-btn" type="button">下载当前筛选</button>
+      </section>
+
+      <section id="usageBar" class="usage-bar"></section>
+      <section id="grid" class="grid" aria-live="polite"></section>
+    </main>
+
+    <div id="paywall" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="paywallTitle">
+      <div class="modal-card">
+        <button id="closePaywallBtn" class="close-btn" aria-label="关闭" type="button">×</button>
+        <h2 id="paywallTitle">解锁批量下载</h2>
+        <p class="trial-pill">本地演示：3 天试用 · 可接 Stripe / Paddle</p>
+
+        <div class="plans" role="radiogroup" aria-label="套餐选择">
+          <label class="plan">
+            <input type="radio" name="plan" value="monthly" />
+            <span>Monthly</span>
+            <strong>$ 2.99 <em>/ month</em></strong>
+          </label>
+          <label class="plan active">
+            <input type="radio" name="plan" value="yearly" checked />
+            <span>Yearly <b>Best</b></span>
+            <strong>$ 14.99 <em>/ year</em></strong>
+          </label>
+          <label class="plan">
+            <input type="radio" name="plan" value="lifetime" />
+            <span>Lifetime</span>
+            <strong>$ 29.99 <em>/ lifetime</em></strong>
+          </label>
+        </div>
+
+        <button id="startTrialBtn" class="trial-btn" type="button">Start 3-Day Free Trial</button>
+        <p class="pay-note">当前版本为产品原型，按钮会在本机开启试用。正式版需要接支付与账号系统。</p>
+        <div class="modal-links">
+          <button id="restoreBtn" type="button">Restore Purchases</button>
+          <span>·</span>
+          <a id="supportLink" href="https://img.playbox.dpdns.org/support" target="_blank" rel="noreferrer">Contact Support</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
