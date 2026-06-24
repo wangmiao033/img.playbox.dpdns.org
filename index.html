@@ -26,7 +26,7 @@
         <p class="lead">适合游戏素材收集、渠道图整理、竞品页面参考。自动识别 JPG、PNG、WEBP、SVG、GIF，并按尺寸与素材类型生成清晰文件名。</p>
         <div class="actions">
           <a class="btn primary" href="https://github.com/wangmiao033/img.playbox.dpdns.org/archive/refs/heads/plugin.zip">下载测试版插件</a>
-          <a class="btn secondary" href="#install">3 步安装教程</a>
+          <a class="btn secondary" href="#install">看图式安装教程</a>
         </div>
       </div>
       <div class="product-card">
@@ -55,12 +55,31 @@
     </section>
 
     <section id="install" class="section">
-      <h2>测试版安装：只看这 3 步</h2>
+      <h2>测试版安装教程</h2>
+      <p class="lead" style="font-size:17px;margin-bottom:18px;">你现在看到 Bandizip 里一堆文件是正常的。重点不是点里面的文件，而是先把整个压缩包解压出来，再把解压后的文件夹交给 Chrome。</p>
+
       <div class="grid">
-        <article class="card"><h3>1. 下载并解压</h3><p>点击上方“下载测试版插件”，下载后右键解压。解压后找到包含 manifest.json 的文件夹。</p></article>
-        <article class="card"><h3>2. 加载到 Chrome</h3><p>打开 chrome://extensions/，右上角开启“开发者模式”，点击“加载已解压的扩展程序”。</p></article>
-        <article class="card"><h3>3. 选择插件文件夹</h3><p>选择刚才解压出的、包含 manifest.json 的文件夹。打开任意网页后点右上角“素材猎手”图标使用。</p></article>
+        <article class="card"><h3>第 1 步：点“下载测试版插件”</h3><p>下载完成后，你会得到一个 zip 压缩包。这个不是普通 exe 安装包，是 Chrome 测试版扩展包。</p></article>
+        <article class="card"><h3>第 2 步：不要在压缩包里打开</h3><p>看到 Bandizip / WinRAR 界面时，不要点 popup.html、manifest.json，也不要点里面的文件。</p></article>
+        <article class="card"><h3>第 3 步：点击“解压”</h3><p>在 Bandizip 左上角点击“解压”，建议解压到桌面，得到一个插件文件夹。</p></article>
+        <article class="card"><h3>第 4 步：打开 Chrome 扩展页</h3><p>复制这个地址到 Chrome 地址栏：chrome://extensions/，然后回车。</p></article>
+        <article class="card"><h3>第 5 步：打开开发者模式</h3><p>在扩展页右上角，打开“开发者模式”。打开后会出现“加载已解压的扩展程序”按钮。</p></article>
+        <article class="card"><h3>第 6 步：加载插件文件夹</h3><p>点击“加载已解压的扩展程序”，选择刚才解压出来、里面有 manifest.json 的文件夹。</p></article>
       </div>
+
+      <div class="doc" style="margin-top:22px;">
+        <h2 style="margin-top:0;">最关键的一句话</h2>
+        <p>Chrome 要选的是<strong>文件夹</strong>，不是 zip 文件，也不是 popup.html 文件。</p>
+        <p>正确选择：解压后的文件夹，里面能看到 <code>manifest.json</code>、<code>background.js</code>、<code>popup.html</code>、<code>popup.js</code>、<code>assets</code>。</p>
+        <p>加载成功后，打开任意普通网页，点击浏览器右上角“素材猎手”图标，就会开始扫描当前网页图片。</p>
+      </div>
+
+      <div class="grid" style="margin-top:18px;">
+        <article class="card"><h3>常见错误 1</h3><p>还停留在 Bandizip 预览界面。解决：先点“解压”，不要在压缩包里直接操作。</p></article>
+        <article class="card"><h3>常见错误 2</h3><p>Chrome 提示找不到 manifest。解决：你选错文件夹了，要选择包含 manifest.json 的那一层。</p></article>
+        <article class="card"><h3>常见错误 3</h3><p>插件装好了但扫不到图。解决：不要在 chrome:// 页面测试，打开普通网站页面再点插件图标。</p></article>
+      </div>
+
       <p class="lead" style="font-size:16px;margin-top:18px;">当前还没上架 Chrome Web Store，所以测试版不能网页自动安装；上架后会变成“添加至 Chrome”一键安装。</p>
     </section>
 
