@@ -25,7 +25,7 @@
         <h1>网页图片，一键扫描、筛选、批量下载。</h1>
         <p class="lead">适合游戏素材收集、渠道图整理、竞品页面参考。自动识别 JPG、PNG、WEBP、SVG、GIF，并按尺寸与素材类型生成清晰文件名。</p>
         <div class="actions">
-          <a class="btn primary" href="https://github.com/wangmiao033/img.playbox.dpdns.org/archive/refs/heads/main.zip">下载插件测试版</a>
+          <a class="btn primary" href="https://github.com/wangmiao033/img.playbox.dpdns.org/archive/refs/heads/plugin.zip">下载 Chrome 插件包</a>
           <a class="btn secondary" href="#install">查看安装方法</a>
         </div>
       </div>
@@ -57,14 +57,14 @@
     <section id="install" class="section">
       <h2>插件安装方法</h2>
       <div class="grid">
-        <article class="card"><h3>1. 下载测试包</h3><p>点击页面上方“下载插件测试版”，下载 GitHub 自动打包的 ZIP 文件。</p></article>
-        <article class="card"><h3>2. 解压文件</h3><p>解压后找到最外层文件夹，里面应能看到 manifest.json、popup.html、background.js。</p></article>
+        <article class="card"><h3>1. 下载插件包</h3><p>点击页面上方“下载 Chrome 插件包”，下载的是精简插件分支，不再包含官网、部署文档和其他杂项。</p></article>
+        <article class="card"><h3>2. 解压文件</h3><p>解压后进入文件夹，里面应能看到 manifest.json、popup.html、background.js、assets 等插件文件。</p></article>
         <article class="card"><h3>3. 打开扩展管理</h3><p>Chrome 地址栏输入 chrome://extensions/，右上角打开“开发者模式”。</p></article>
-        <article class="card"><h3>4. 加载已解压扩展</h3><p>点击“加载已解压的扩展程序”，选择刚才解压出来的文件夹。</p></article>
+        <article class="card"><h3>4. 加载已解压扩展</h3><p>点击“加载已解压的扩展程序”，选择刚才解压出来、包含 manifest.json 的文件夹。</p></article>
         <article class="card"><h3>5. 打开素材页面</h3><p>进入游戏官网、素材页、文章页等普通网页，然后点击浏览器右上角“素材猎手”图标。</p></article>
         <article class="card"><h3>6. 筛选并下载</h3><p>按格式、Min size、素材类型筛选图片，勾选后点击“下载选中”或“下载当前筛选”。</p></article>
       </div>
-      <p class="lead" style="font-size:16px;margin-top:18px;">注意：当前还没上架 Chrome Web Store，所以需要用开发者模式安装。正式上架后会改成商店一键安装。</p>
+      <p class="lead" style="font-size:16px;margin-top:18px;">注意：当前还没上架 Chrome Web Store，所以不能网页自动安装。Chrome 只允许商店版一键安装；测试版必须先解压，再用开发者模式加载。</p>
     </section>
 
     <footer class="footer">
