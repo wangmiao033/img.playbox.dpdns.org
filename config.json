@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.24.1",
+  "version": "2026.06.26.1",
   "description": "Image Hunter remote configuration. This file only contains data rules, no executable code.",
   "ui": {
     "minSizeDefault": 10,
@@ -8,12 +8,12 @@
     "emptyTips": {
       "default": "没有匹配图片。先刷新网页，再点插件右上角刷新；也可以调低 Min size。",
       "wechat": "微信文章图片通常懒加载。先滚到图片位置，再点插件右上角刷新。",
-      "ali213": "如果没有图片，先等待页面图片加载完，再点插件右上角刷新。"
+      "ali213": "如果只想下载本游戏图片，点「正文图」或「大图」，再点下载当前筛选。"
     }
   },
   "generic": {
-    "maxNodes": 3000,
-    "maxHtmlMatches": 600,
+    "maxNodes": 3600,
+    "maxHtmlMatches": 700,
     "attributes": [
       "src",
       "currentSrc",
@@ -57,7 +57,45 @@
         ".arcbody img",
         ".gl-content img",
         ".main img",
+        ".detail img",
+        ".news_con img",
+        ".text img",
+        ".showcont img",
+        ".wz_con img",
+        ".cont img",
+        ".con img",
         "img"
+      ],
+      "contentHints": [
+        "article",
+        "content",
+        "arcbody",
+        "gl-content",
+        "main",
+        "detail",
+        "news_con",
+        "text",
+        "showcont",
+        "wz_con",
+        "cont",
+        "con",
+        "正文"
+      ],
+      "excludeHints": [
+        "right",
+        "side",
+        "rank",
+        "hot",
+        "recommend",
+        "footer",
+        "header",
+        "nav",
+        "menu",
+        "search",
+        "login",
+        "app",
+        "ad",
+        "广告"
       ],
       "extraAttributes": [
         "data-original",
@@ -73,7 +111,7 @@
         ".webp",
         ".gif"
       ],
-      "tips": "游侠页面右侧会有很多推荐 icon，可把 Min size 调到 200px 或 300px，只看正文大图。"
+      "tips": "游侠页面建议点「正文图」筛掉右侧推荐 icon；如果想只要大素材，点「大图」。"
     },
     "mp.weixin.qq.com": {
       "enabled": true,
@@ -84,6 +122,10 @@
         "#js_content img",
         ".rich_media_content img",
         "img"
+      ],
+      "contentHints": [
+        "js_content",
+        "rich_media_content"
       ],
       "extraAttributes": [
         "data-src",
