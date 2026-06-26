@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "素材猎手 - Image Hunter",
   "short_name": "素材猎手",
-  "version": "0.2.1",
-  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；支持微信公众号图片识别优化。",
+  "version": "0.2.2",
+  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；测试版增加全站注入权限用于兼容更多网页。",
   "action": {
     "default_popup": "popup.html",
     "default_title": "素材猎手"
@@ -16,6 +16,10 @@
     "scripting",
     "downloads",
     "storage"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
   ],
   "icons": {
     "16": "assets/icon16.png",
