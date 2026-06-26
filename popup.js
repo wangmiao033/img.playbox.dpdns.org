@@ -1,28 +1,11 @@
 const MESSAGE_DOWNLOAD_MANY = "IH_DOWNLOAD_MANY";
-const CONFIG = window.IMAGE_HUNTER_CONFIG || {
-  supportUrl: "https://img.playbox.dpdns.org/support",
-  apiBaseUrl: "https://img.playbox.dpdns.org/api"
-};
-const FREE_DAILY_LIMIT = 20;
-const FREE_BATCH_LIMIT = 10;
 const FORMATS = ["ALL", "JPG", "PNG", "WEBP", "SVG", "GIF", "AVIF", "OTHER"];
-const state = {
-  assets: [],
-  filter: "ALL",
-  minSize: 10,
-  selected: new Set(),
-  usage: { date: today(), count: 0 },
-  trialUntil: 0,
-  pending: null,
-  pageHost: "page",
-  scanning: false
-};
+const state = { assets: [], filter: "ALL", minSize: 10, selected: new Set(), pageHost: "page", scanning: false };
 const $ = {};
 
 document.addEventListener("DOMContentLoaded", async () => {
   cache();
   bind();
-  await loadState();
   renderUsage();
   await scan();
 });
@@ -32,115 +15,196 @@ function cache() {
 }
 
 function bind() {
-  if ($.supportLink) $.supportLink.href = CONFIG.supportUrl;
   $.refreshBtn.onclick = scan;
   $.minSize.oninput = () => {
     state.minSize = Number($.minSize.value) || 0;
     $.minSizeValue.textContent = state.minSize + "px";
-    saveState();
     renderAll();
   };
   $.selectVisibleBtn.onclick = selectVisible;
   $.downloadSelectedBtn.onclick = () => download(state.assets.filter(a => state.selected.has(a.id)));
   $.downloadVisibleBtn.onclick = () => download(visible());
-  $.closePaywallBtn.onclick = () => hidePaywall();
-  $.paywall.onclick = e => { if (e.target === $.paywall) hidePaywall(); };
-  $.startTrialBtn.onclick = async () => {
-    state.trialUntil = Date.now() + 3 * 864e5;
-    await saveState();
-    hidePaywall();
-    renderUsage();
-    toast("已开启本地 3 天试用。正式版接入支付后替换此逻辑。");
-    if (state.pending) {
-      const a = state.pending;
-      state.pending = null;
-      download(a, { bypass: true });
-    }
-  };
-  $.restoreBtn.onclick = () => toast("恢复购买接口已预留，正式版对接 " + CONFIG.apiBaseUrl + " 校验订单。");
-  document.querySelectorAll('input[name="plan"]').forEach(i => i.onchange = () => {
-    document.querySelectorAll(".plan").forEach(p => p.classList.remove("active"));
-    i.closest(".plan").classList.add("active");
-  });
-}
-
-async function loadState() {
-  const s = await chrome.storage.local.get(["ihUsage", "ihTrialUntil", "ihMinSize"]);
-  state.usage = s.ihUsage && s.ihUsage.date === today() ? s.ihUsage : { date: today(), count: 0 };
-  state.trialUntil = Number(s.ihTrialUntil || 0);
-  state.minSize = Number(s.ihMinSize || 10);
-  $.minSize.value = state.minSize;
-  $.minSizeValue.textContent = state.minSize + "px";
-}
-
-function saveState() {
-  return chrome.storage.local.set({ ihUsage: state.usage, ihTrialUntil: state.trialUntil, ihMinSize: state.minSize });
+  if ($.closePaywallBtn) $.closePaywallBtn.onclick = () => $.paywall.classList.add("hidden");
+  if ($.startTrialBtn) $.startTrialBtn.onclick = () => toast("测试版已开放下载，无需开通会员。");
+  if ($.restoreBtn) $.restoreBtn.onclick = () => toast("测试版暂无恢复购买功能。");
+  if ($.supportLink) $.supportLink.href = "https://img.playbox.dpdns.org/support";
 }
 
 async function scan() {
   if (state.scanning) return;
   state.scanning = true;
-  state.selected.clear();
   state.assets = [];
+  state.selected.clear();
+  renderLoading();
   status("正在扫描当前网页…");
-  $.grid.innerHTML = '<div class="empty-state"><h3>扫描中…</h3><p>正在读取当前网页图片、背景图和 SVG。</p></div>';
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !/^https?:\/\//.test(tab.url || "")) throw new Error("Chrome 系统页、扩展页或本地文件页不能扫描。请打开普通网页后再试。");
-    const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: scanPage });
-    const res = r && r.result ? r.result : { assets: [] };
-    state.pageHost = res.pageHost || "page";
-    state.assets = dedupe((res.assets || []).map((a, i) => ({
-      ...a,
-      id: a.id || hash(a.url + i),
-      format: norm(a.format || fmt(a.url)),
-      tag: tag(a.width, a.height),
-      pageHost: state.pageHost
-    })));
+    if (!tab || !tab.id) throw new Error("没有找到当前标签页");
+    if (!/^https?:\/\//i.test(tab.url || "")) throw new Error("Chrome 系统页、扩展页或本地文件页不能扫描。请打开普通网页后再试。");
+    const hostFromTab = getHost(tab.url);
+    let result = null;
+    try {
+      const [injection] = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scanImagesInPage });
+      result = injection && injection.result;
+    } catch (e) {
+      console.warn("inject scan failed", e);
+    }
+    if (!result || !Array.isArray(result.assets) || result.assets.length === 0) {
+      result = await scanHtmlByFetch(tab.url, hostFromTab);
+    }
+    state.pageHost = result.pageHost || hostFromTab || "page";
+    state.assets = normalizeAssets(result.assets || [], state.pageHost);
     status(`${state.assets.length} images · ${state.pageHost}`);
     renderAll();
   } catch (e) {
     status("扫描失败");
-    $.grid.innerHTML = `<div class="empty-state"><h3>不能扫描这个页面</h3><p>${esc(e.message || String(e))}</p></div>`;
+    renderError(e && e.message ? e.message : String(e));
   } finally {
     state.scanning = false;
   }
 }
 
-function renderAll() { renderTabs(); renderUsage(); renderGrid(); buttons(); }
+async function scanHtmlByFetch(url, host) {
+  try {
+    const res = await fetch(url, { credentials: "include" });
+    const html = await res.text();
+    const assets = [];
+    const seen = new Set();
+    const add = raw => {
+      const u = absolutize(raw, url);
+      if (!u || seen.has(u) || !looksImage(u)) return;
+      seen.add(u);
+      assets.push({ url: u, source: "html", width: 0, height: 0, format: inferFormat(u) });
+    };
+    const attrRe = /(?:src|href|data-src|data-original|data-lazy|data-url|data-img|data-bg|data-actualsrc|data-cover)\s*=\s*["']([^"']+)["']/ig;
+    let m;
+    while ((m = attrRe.exec(html))) add(m[1]);
+    const urlRe = /https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)[^"'\s<>]*)/ig;
+    while ((m = urlRe.exec(html))) add(m[0]);
+    const wxRe = /https?:\/\/mmbiz\.qpic\.cn\/[^"'\s<>]+/ig;
+    while ((m = wxRe.exec(html))) add(m[0]);
+    return { pageHost: host, assets };
+  } catch (e) {
+    return { pageHost: host, assets: [] };
+  }
+}
 
+function scanImagesInPage() {
+  const pageHost = location.hostname.replace(/^www\./, "") || "page";
+  const pageUrl = location.href;
+  const assets = [];
+  const seen = new Set();
+  const attrs = ["src", "currentSrc", "href", "data-src", "data-original", "data-lazy", "data-url", "data-image", "data-img", "data-bg", "data-background", "data-actualsrc", "data-cover", "data-croporisrc", "data-img-src"];
+  function abs(raw) {
+    let v = String(raw || "").trim();
+    if (!v || v === "none") return null;
+    if (v.startsWith("//")) v = location.protocol + v;
+    if (/^data:image\//i.test(v)) return v;
+    if (/^blob:/i.test(v)) return null;
+    try {
+      const u = new URL(v, document.baseURI || location.href).href;
+      return /^https?:\/\//i.test(u) ? u : null;
+    } catch { return null; }
+  }
+  function isImg(url) {
+    const s = String(url || "");
+    return /^data:image\//i.test(s) || /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)(\?|#|$)/i.test(s) || /mmbiz\.qpic\.cn/i.test(s) || /wx_fmt=(jpg|jpeg|png|webp|gif|bmp)/i.test(s) || /imageMogr2/i.test(s);
+  }
+  function fmt(url) {
+    const s = String(url || "");
+    const d = s.match(/^data:image\/([^;,]+)/i);
+    if (d) return d[1].toLowerCase();
+    try {
+      const u = new URL(s, location.href);
+      const wx = u.searchParams.get("wx_fmt") || u.searchParams.get("tp");
+      if (wx) return wx.replace("image/", "").toLowerCase();
+    } catch {}
+    const m = s.split("?")[0].split("#")[0].match(/\.([a-z0-9]{2,5})$/i);
+    return m ? m[1].toLowerCase() : "OTHER";
+  }
+  function add(raw, source, el) {
+    const url = abs(raw);
+    if (!url || !isImg(url) || seen.has(url)) return;
+    seen.add(url);
+    const rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    const width = Math.round(Number((el && (el.naturalWidth || el.getAttribute && (el.getAttribute("data-w") || el.getAttribute("width")))) || (rect && rect.width) || 0));
+    const height = Math.round(Number((el && (el.naturalHeight || el.getAttribute && (el.getAttribute("data-h") || el.getAttribute("height")))) || (rect && rect.height) || 0));
+    assets.push({ url, source, width, height, format: fmt(url) });
+  }
+  function srcset(v) {
+    return String(v || "").split(",").map(p => p.trim().split(/\s+/)[0]).filter(Boolean);
+  }
+  document.querySelectorAll("img").forEach(img => {
+    add(img.currentSrc || img.src, "img", img);
+    attrs.forEach(a => add(img.getAttribute && img.getAttribute(a), "attr", img));
+    srcset(img.getAttribute && img.getAttribute("srcset")).forEach(u => add(u, "srcset", img));
+    Array.from(img.attributes || []).forEach(a => /^data-/i.test(a.name) && add(a.value, "data", img));
+  });
+  document.querySelectorAll("source").forEach(s => srcset(s.getAttribute("srcset")).forEach(u => add(u, "source", s)));
+  document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"],meta[itemprop="image"]').forEach(m => add(m.getAttribute("content"), "meta", null));
+  document.querySelectorAll("a[href]").forEach(a => add(a.getAttribute("href"), "link", a));
+  Array.from(document.querySelectorAll("body, body *")).slice(0, 3000).forEach(el => {
+    attrs.forEach(a => add(el.getAttribute && el.getAttribute(a), "attr", el));
+    const styleText = (el.getAttribute && el.getAttribute("style")) || "";
+    styleText.replace(/url\((?:"([^"]+)"|'([^']+)'|([^\)]+))\)/g, (_, a, b, c) => add(a || b || c, "style", el));
+    try {
+      const st = getComputedStyle(el);
+      [st.backgroundImage, st.maskImage, st.webkitMaskImage, st.borderImageSource].join(",").replace(/url\((?:"([^"]+)"|'([^']+)'|([^\)]+))\)/g, (_, a, b, c) => add(a || b || c, "css", el));
+    } catch {}
+  });
+  const html = document.documentElement.innerHTML;
+  (html.match(/https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)[^"'\s<>]*)/ig) || []).slice(0, 500).forEach(u => add(u, "html", null));
+  (html.match(/https?:\/\/mmbiz\.qpic\.cn\/[^"'\s<>]+/ig) || []).slice(0, 500).forEach(u => add(u, "wechat", null));
+  return { pageHost, pageUrl, assets: assets.slice(0, 800) };
+}
+
+function normalizeAssets(items, host) {
+  return dedupe((items || []).map((a, i) => ({
+    url: a.url,
+    source: a.source || "image",
+    width: Number(a.width || 0),
+    height: Number(a.height || 0),
+    pageHost: host,
+    id: hash((a.url || "") + i),
+    format: norm(a.format || inferFormat(a.url)),
+    tag: classify(Number(a.width || 0), Number(a.height || 0))
+  })));
+}
+
+function renderAll() { renderTabs(); renderUsage(); renderGrid(); buttons(); }
+function renderLoading() { $.grid.innerHTML = '<div class="empty-state"><h3>扫描中…</h3><p>正在读取当前网页图片。</p></div>'; }
+function renderError(msg) { $.grid.innerHTML = `<div class="empty-state"><h3>无法扫描</h3><p>${escapeHtml(msg)}</p></div>`; }
 function renderTabs() {
-  const c = { ALL: state.assets.length };
-  state.assets.forEach(a => c[a.format] = (c[a.format] || 0) + 1);
+  const count = { ALL: state.assets.length };
+  state.assets.forEach(a => count[a.format] = (count[a.format] || 0) + 1);
   $.formatTabs.innerHTML = "";
   FORMATS.forEach(f => {
-    if (f !== "ALL" && !c[f]) return;
+    if (f !== "ALL" && !count[f]) return;
     const b = document.createElement("button");
     b.className = "tab" + (state.filter === f ? " active" : "");
-    b.textContent = (f === "ALL" ? "All" : f) + ` (${c[f] || 0})`;
+    b.textContent = `${f === "ALL" ? "All" : f} (${count[f] || 0})`;
     b.onclick = () => { state.filter = f; renderAll(); };
     $.formatTabs.appendChild(b);
   });
 }
-
+function renderUsage() {
+  $.usageBar.innerHTML = '<div class="usage-chip"><span>测试版：批量下载功能开放</span><button id="upgradeInlineBtn">帮助</button></div>';
+  const b = document.getElementById("upgradeInlineBtn");
+  if (b) b.onclick = () => toast("如果显示 0，先刷新页面，再点插件右上角刷新。");
+}
 function renderGrid() {
-  const v = visible();
+  const list = visible();
   $.grid.innerHTML = "";
-  if (!v.length) {
-    const isWechat = /(^|\.)mp\.weixin\.qq\.com$/.test(state.pageHost);
-    $.grid.innerHTML = isWechat
-      ? '<div class="empty-state"><h3>没有匹配图片</h3><p>这篇微信文章当前可见内容可能是纯文字，或图片还没懒加载。先向下滚到有图片的位置，再点右上角刷新。</p></div>'
-      : '<div class="empty-state"><h3>没有匹配图片</h3><p>调低 Min size，或切换 All / JPG / PNG 试试。</p></div>';
+  if (!list.length) {
+    $.grid.innerHTML = '<div class="empty-state"><h3>没有匹配图片</h3><p>先确认已安装最新版 0.2.3。再试：刷新网页、向下滚到图片位置、点击插件右上角刷新。</p></div>';
     return;
   }
-  v.forEach(a => {
+  list.forEach(a => {
     const card = document.createElement("article");
     card.className = "card" + (state.selected.has(a.id) ? " selected" : "");
     const img = document.createElement("img");
     img.src = a.url;
     img.alt = `${a.width || "?"} × ${a.height || "?"}`;
-    img.loading = "lazy";
-    img.onerror = () => { img.remove(); card.style.background = "linear-gradient(135deg,#cbd5e1,#94a3b8)"; };
     const ck = document.createElement("button");
     ck.className = "check";
     ck.textContent = state.selected.has(a.id) ? "✓" : "";
@@ -157,147 +221,19 @@ function renderGrid() {
     $.grid.appendChild(card);
   });
 }
-
-function renderUsage() {
-  const trial = state.trialUntil > Date.now();
-  if (trial) {
-    const h = Math.max(1, Math.ceil((state.trialUntil - Date.now()) / 36e5));
-    $.usageBar.innerHTML = `<div class="usage-chip"><span>试用中 · 约 ${h} 小时后结束</span><button id="upgradeInlineBtn">升级</button></div>`;
-  } else {
-    const left = Math.max(0, FREE_DAILY_LIMIT - state.usage.count);
-    $.usageBar.innerHTML = `<div class="usage-chip"><span>免费额度：今日剩余 ${left}/${FREE_DAILY_LIMIT} 张</span><button id="upgradeInlineBtn">解锁</button></div>`;
-  }
-  const b = document.getElementById("upgradeInlineBtn");
-  if (b) b.onclick = showPaywall;
-}
-
-function buttons() {
-  const v = visible(), n = state.selected.size;
-  $.selectVisibleBtn.disabled = !v.length;
-  $.downloadSelectedBtn.disabled = !n;
-  $.downloadSelectedBtn.textContent = n ? `下载选中 ${n}` : "下载选中";
-  $.downloadVisibleBtn.disabled = !v.length;
-}
-
-function visible() {
-  return state.assets.filter(a => (state.filter === "ALL" || a.format === state.filter) && (!a.width || !a.height || Math.min(a.width, a.height) >= state.minSize));
-}
-
+function visible() { return state.assets.filter(a => (state.filter === "ALL" || a.format === state.filter) && (!a.width || !a.height || Math.min(a.width, a.height) >= state.minSize)); }
+function buttons() { const v = visible(), n = state.selected.size; $.selectVisibleBtn.disabled = !v.length; $.downloadVisibleBtn.disabled = !v.length; $.downloadSelectedBtn.disabled = !n; $.downloadSelectedBtn.textContent = n ? `下载选中 ${n}` : "下载选中"; }
 function toggle(id) { state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id); renderGrid(); buttons(); }
-function selectVisible() { const v = visible(), all = v.every(a => state.selected.has(a.id)); v.forEach(a => all ? state.selected.delete(a.id) : state.selected.add(a.id)); renderGrid(); buttons(); }
-
-async function download(assets, opt = {}) {
-  if (!assets.length) return toast("没有可下载的图片。");
-  if (!opt.bypass && !(await allow(assets))) { state.pending = assets; return showPaywall(); }
-  try {
-    const r = await chrome.runtime.sendMessage({ type: MESSAGE_DOWNLOAD_MANY, assets, folder: "ImageHunter" });
-    if (!r || !r.ok) throw new Error(r && r.error ? r.error : "下载失败");
-    if (!trial() && !opt.bypass) { state.usage.count += r.downloaded; await saveState(); }
-    renderUsage();
-    toast(`已提交下载 ${r.downloaded} 张${r.failed ? `，失败 ${r.failed} 张` : ""}。`);
-  } catch (e) { toast(e.message || String(e)); }
-}
-
-async function allow(a) {
-  if (trial()) return true;
-  if (a.length > FREE_BATCH_LIMIT) return false;
-  if (state.usage.date !== today()) state.usage = { date: today(), count: 0 };
-  return state.usage.count + a.length <= FREE_DAILY_LIMIT;
-}
-
-function showPaywall() { $.paywall.classList.remove("hidden"); }
-function hidePaywall() { $.paywall.classList.add("hidden"); }
+function selectVisible() { const v = visible(); const all = v.every(a => state.selected.has(a.id)); v.forEach(a => all ? state.selected.delete(a.id) : state.selected.add(a.id)); renderGrid(); buttons(); }
+async function download(assets) { if (!assets.length) return toast("没有可下载的图片"); const r = await chrome.runtime.sendMessage({ type: MESSAGE_DOWNLOAD_MANY, assets, folder: "ImageHunter" }); toast(r && r.ok ? `已提交下载 ${r.downloaded} 张` : "下载失败"); }
 function status(t) { $.pageStatus.textContent = t; }
-function trial() { return state.trialUntil > Date.now(); }
-function today() { return new Date().toISOString().slice(0, 10); }
-let tt;
-function toast(t) { clearTimeout(tt); $.toast.textContent = t; $.toast.classList.remove("hidden"); tt = setTimeout(() => $.toast.classList.add("hidden"), 3300); }
-function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function getHost(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "page"; } }
+function absolutize(raw, base) { let v = String(raw || "").trim(); if (!v) return null; if (v.startsWith("//")) v = "https:" + v; try { return new URL(v, base).href; } catch { return null; } }
+function looksImage(u) { return /^data:image\//i.test(u) || /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)(\?|#|$)/i.test(u) || /mmbiz\.qpic\.cn/i.test(u) || /wx_fmt=/i.test(u) || /imageMogr2/i.test(u); }
+function inferFormat(u) { const s = String(u || ""); const d = s.match(/^data:image\/([^;,]+)/i); if (d) return d[1]; try { const x = new URL(s); const wx = x.searchParams.get("wx_fmt") || x.searchParams.get("tp"); if (wx) return wx.replace("image/", ""); } catch {} const m = s.split("?")[0].split("#")[0].match(/\.([a-z0-9]{2,5})$/i); return m ? m[1] : "OTHER"; }
 function norm(f) { f = String(f || "OTHER").toUpperCase(); if (f === "JPEG") return "JPG"; return ["JPG", "PNG", "WEBP", "SVG", "GIF", "AVIF"].includes(f) ? f : "OTHER"; }
-function fmt(u) { const s = String(u || ""); const d = s.match(/^data:image\/([^;,]+)/i); if (d) return d[1]; try { const x = new URL(s); const wx = x.searchParams.get("wx_fmt") || x.searchParams.get("tp"); if (wx) return wx.replace("image/", ""); } catch {} const m = s.split("?")[0].split("#")[0].match(/\.([a-z0-9]{2,5})$/i); return m ? m[1] : "OTHER"; }
-function tag(w, h) { w = +w || 0; h = +h || 0; if (!w || !h) return "asset"; const r = w / h; if (Math.abs(r - 1) < .08 && w >= 128) return "icon"; if (r >= 1.65 && w >= 900) return "banner"; if (r <= .62 && h >= 900) return "splash"; if (r >= 1.25) return "landscape"; if (r <= .82) return "portrait"; return "asset"; }
+function classify(w, h) { if (!w || !h) return "asset"; const r = w / h; if (Math.abs(r - 1) < .08 && w >= 128) return "icon"; if (r >= 1.65 && w >= 900) return "banner"; if (r <= .62 && h >= 900) return "splash"; if (r >= 1.25) return "landscape"; if (r <= .82) return "portrait"; return "asset"; }
 function hash(s) { let h = 2166136261; String(s).split("").forEach(ch => { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }); return "ih_" + (h >>> 0).toString(36); }
-function dedupe(a) { const s = new Set(); return a.filter(x => x.url && !s.has(x.url) && s.add(x.url)); }
-
-function scanPage() {
-  const pageHost = location.hostname.replace(/^www\./, "") || "page";
-  const out = [];
-  const imageAttrNames = ["src", "currentSrc", "href", "data-src", "data-original", "data-lazy", "data-url", "data-image", "data-bg", "data-backsrc", "data-croporisrc", "data-actualsrc", "data-imgurl", "data-img-src", "data-cover"];
-
-  const localFormat = (value) => {
-    const s = String(value || "");
-    const data = s.match(/^data:image\/([^;,]+)/i);
-    if (data) return data[1].toLowerCase();
-    try {
-      const u = new URL(s, document.baseURI);
-      const wxFmt = u.searchParams.get("wx_fmt") || u.searchParams.get("tp");
-      if (wxFmt) return wxFmt.replace("image/", "").toLowerCase();
-    } catch {}
-    const ext = s.split("?")[0].split("#")[0].match(/\.([a-z0-9]{2,5})$/i);
-    return ext ? ext[1].toLowerCase() : "OTHER";
-  };
-
-  const abs = (u) => {
-    u = String(u || "").trim();
-    if (!u) return null;
-    if (u.startsWith("//")) u = location.protocol + u;
-    if (/^data:image\//i.test(u)) return u;
-    if (/^blob:/i.test(u)) return null;
-    try {
-      const x = new URL(u, document.baseURI).href;
-      return /^https?:\/\//i.test(x) ? x : null;
-    } catch { return null; }
-  };
-
-  const looksLikeImage = (url) => {
-    const s = String(url || "");
-    return /^data:image\//i.test(s) || /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)(\?|#|$)/i.test(s) || /mmbiz\.qpic\.cn/i.test(s) || /wx_fmt=(jpg|jpeg|png|webp|gif|bmp)/i.test(s);
-  };
-
-  const srcset = (s) => String(s || "").split(",").map(p => p.trim().split(/\s+/)[0]).filter(Boolean);
-
-  const add = (url, source, el) => {
-    url = abs(url);
-    if (!url || (!looksLikeImage(url) && source !== "img" && source !== "css" && source !== "meta")) return;
-    const r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : {};
-    const width = Math.round(Number(el && (el.naturalWidth || el.getAttribute && (el.getAttribute("data-w") || el.getAttribute("width")))) || r.width || 0);
-    const height = Math.round(Number(el && (el.naturalHeight || el.getAttribute && (el.getAttribute("data-h") || el.getAttribute("height")))) || r.height || 0);
-    out.push({ url, source, width, height, format: localFormat(url) });
-  };
-
-  document.querySelectorAll("img").forEach(img => {
-    add(img.currentSrc || img.src, "img", img);
-    srcset(img.getAttribute("srcset")).forEach(u => add(u, "srcset", img));
-    imageAttrNames.forEach(k => add(img.getAttribute(k), "lazy", img));
-  });
-
-  document.querySelectorAll("source").forEach(s => srcset(s.getAttribute("srcset")).forEach(u => add(u, "source", s)));
-  document.querySelectorAll('meta[property="og:image"],meta[name="twitter:image"],meta[itemprop="image"]').forEach(m => add(m.content, "meta", m));
-
-  document.querySelectorAll("a[href]").forEach(a => add(a.getAttribute("href"), "link", a));
-
-  document.querySelectorAll("svg").forEach((svg, index) => {
-    try {
-      const text = new XMLSerializer().serializeToString(svg);
-      if (text.length < 120000) out.push({ url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(text), source: "svg", width: Math.round(svg.getBoundingClientRect().width || 0), height: Math.round(svg.getBoundingClientRect().height || 0), format: "svg" });
-    } catch {}
-  });
-
-  Array.from(document.querySelectorAll("body,body *")).slice(0, 3000).forEach(el => {
-    imageAttrNames.forEach(k => add(el.getAttribute && el.getAttribute(k), "attr", el));
-    const styleText = (el.getAttribute && el.getAttribute("style")) || "";
-    styleText.replace(/url\((?:"([^"]+)"|'([^']+)'|([^\)]+))\)/g, (_, a, b, c) => add(a || b || c, "style", el));
-    try {
-      const st = getComputedStyle(el);
-      [st.backgroundImage, st.maskImage, st.webkitMaskImage].join(",").replace(/url\((?:"([^"]+)"|'([^']+)'|([^\)]+))\)/g, (_, a, b, c) => add(a || b || c, "css", el));
-    } catch {}
-  });
-
-  const html = document.documentElement.innerHTML;
-  const urlMatches = html.match(/https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)[^"'\s<>]*)/ig) || [];
-  urlMatches.slice(0, 300).forEach(u => add(u, "html", null));
-  const wxMatches = html.match(/https?:\/\/mmbiz\.qpic\.cn\/[^"'\s<>]+/ig) || [];
-  wxMatches.slice(0, 300).forEach(u => add(u, "wechat", null));
-
-  return { pageHost, assets: out.slice(0, 800) };
-}
+function dedupe(arr) { const seen = new Set(); return arr.filter(a => a.url && !seen.has(a.url) && seen.add(a.url)); }
+function escapeHtml(t) { return String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+let toastTimer; function toast(t) { clearTimeout(toastTimer); $.toast.textContent = t; $.toast.classList.remove("hidden"); toastTimer = setTimeout(() => $.toast.classList.add("hidden"), 2800); }
