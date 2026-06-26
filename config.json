@@ -1,5 +1,5 @@
 {
-  "version": "2026.06.26.1",
+  "version": "2026.06.26.2",
   "description": "Image Hunter remote configuration. This file only contains data rules, no executable code.",
   "ui": {
     "minSizeDefault": 10,
@@ -49,7 +49,7 @@
     "m.ali213.net": {
       "enabled": true,
       "label": "游侠网移动页",
-      "minSizeDefault": 10,
+      "minSizeDefault": 80,
       "sortBy": "area_desc",
       "selectors": [
         "article img",
@@ -111,7 +111,7 @@
         ".webp",
         ".gif"
       ],
-      "tips": "游侠页面建议点「正文图」筛掉右侧推荐 icon；如果想只要大素材，点「大图」。"
+      "tips": "游侠页面已默认过滤 80px 以下小碎图。点「正文图」优先看当前游戏文章图片；点「大图」只看大素材。"
     },
     "mp.weixin.qq.com": {
       "enabled": true,
