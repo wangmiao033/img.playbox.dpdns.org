@@ -1,0 +1,104 @@
+{
+  "version": "2026.06.24.1",
+  "description": "Image Hunter remote configuration. This file only contains data rules, no executable code.",
+  "ui": {
+    "minSizeDefault": 10,
+    "sortBy": "area_desc",
+    "maxDisplayImages": 800,
+    "emptyTips": {
+      "default": "没有匹配图片。先刷新网页，再点插件右上角刷新；也可以调低 Min size。",
+      "wechat": "微信文章图片通常懒加载。先滚到图片位置，再点插件右上角刷新。",
+      "ali213": "如果没有图片，先等待页面图片加载完，再点插件右上角刷新。"
+    }
+  },
+  "generic": {
+    "maxNodes": 3000,
+    "maxHtmlMatches": 600,
+    "attributes": [
+      "src",
+      "currentSrc",
+      "href",
+      "data-src",
+      "data-original",
+      "data-lazy",
+      "data-url",
+      "data-image",
+      "data-img",
+      "data-bg",
+      "data-background",
+      "data-actualsrc",
+      "data-cover",
+      "data-croporisrc",
+      "data-img-src",
+      "data-original-src"
+    ],
+    "imageUrlKeywords": [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".gif",
+      ".svg",
+      ".avif",
+      "mmbiz.qpic.cn",
+      "wx_fmt=",
+      "imageMogr2"
+    ]
+  },
+  "sites": {
+    "m.ali213.net": {
+      "enabled": true,
+      "label": "游侠网移动页",
+      "minSizeDefault": 10,
+      "sortBy": "area_desc",
+      "selectors": [
+        "article img",
+        ".content img",
+        ".arcbody img",
+        ".gl-content img",
+        ".main img",
+        "img"
+      ],
+      "extraAttributes": [
+        "data-original",
+        "data-src",
+        "data-url",
+        "data-lazy"
+      ],
+      "imageUrlKeywords": [
+        "ali213.net",
+        "ali213.com",
+        ".jpg",
+        ".png",
+        ".webp",
+        ".gif"
+      ],
+      "tips": "游侠页面右侧会有很多推荐 icon，可把 Min size 调到 200px 或 300px，只看正文大图。"
+    },
+    "mp.weixin.qq.com": {
+      "enabled": true,
+      "label": "微信公众号文章",
+      "minSizeDefault": 10,
+      "sortBy": "area_desc",
+      "selectors": [
+        "#js_content img",
+        ".rich_media_content img",
+        "img"
+      ],
+      "extraAttributes": [
+        "data-src",
+        "data-backsrc",
+        "data-croporisrc",
+        "data-w",
+        "data-ratio"
+      ],
+      "imageUrlKeywords": [
+        "mmbiz.qpic.cn",
+        "wx_fmt=jpg",
+        "wx_fmt=png",
+        "wx_fmt=webp"
+      ],
+      "tips": "微信图片通常懒加载，先滚到图片位置再刷新插件。"
+    }
+  }
+}
