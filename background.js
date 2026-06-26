@@ -1,14 +1,22 @@
 const MESSAGE_DOWNLOAD_MANY = "IH_DOWNLOAD_MANY";
 
+setupSidePanel();
 setExtensionIcon();
-chrome.runtime.onInstalled.addListener(() => setExtensionIcon());
-chrome.runtime.onStartup.addListener(() => setExtensionIcon());
+chrome.runtime.onInstalled.addListener(() => {
+  setupSidePanel();
+  setExtensionIcon();
+});
+chrome.runtime.onStartup.addListener(() => {
+  setupSidePanel();
+  setExtensionIcon();
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || message.type !== MESSAGE_DOWNLOAD_MANY) return false;
 
   (async () => {
     try {
+      await setupSidePanel();
       await setExtensionIcon();
       const assets = Array.isArray(message.assets) ? message.assets : [];
       const folder = sanitizePathSegment(message.folder || "ImageHunter");
@@ -41,6 +49,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true;
 });
+
+async function setupSidePanel() {
+  try {
+    if (!chrome.sidePanel) return;
+    await chrome.sidePanel.setOptions({ path: "popup.html", enabled: true });
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  } catch (error) {
+    console.warn("Image Hunter side panel setup skipped", error);
+  }
+}
 
 async function setExtensionIcon() {
   try {
