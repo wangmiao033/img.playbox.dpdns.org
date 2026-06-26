@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>卸载反馈 - 素材猎手 Image Hunter</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: #111827;
+      background:
+        linear-gradient(rgba(8, 19, 36, .24), rgba(8, 19, 36, .24)),
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,.24), transparent 28%),
+        linear-gradient(135deg, #173c21, #406a2e 42%, #112619);
+    }
+    .page {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+    .card {
+      width: min(860px, 100%);
+      border-radius: 18px;
+      padding: 30px;
+      background: rgba(255,255,255,.72);
+      box-shadow: 0 24px 80px rgba(0,0,0,.28);
+      backdrop-filter: blur(8px);
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; }
+    .brand-mark { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #ff8a00, #ff2d00); display: grid; place-items: center; color: #fff; }
+    .langs { font-size: 20px; letter-spacing: 3px; white-space: nowrap; opacity: .9; }
+    h1 { margin: 16px 0 10px; font-size: clamp(30px, 4.8vw, 44px); letter-spacing: -.04em; }
+    .lead { margin: 0 0 28px; font-size: 22px; line-height: 1.6; }
+    label { display: block; font-weight: 800; margin: 14px 0 8px; }
+    select, textarea, input {
+      width: 100%;
+      border: 1px solid rgba(15,23,42,.22);
+      border-radius: 9px;
+      padding: 13px 14px;
+      font-size: 15px;
+      background: rgba(255,255,255,.92);
+      outline: none;
+    }
+    textarea { min-height: 130px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .hint { color: #374151; font-size: 13px; line-height: 1.6; margin-top: 10px; }
+    .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+    button, .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      background: #111827;
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 15px;
+    }
+    .btn.secondary { background: rgba(255,255,255,.86); color: #111827; border: 1px solid rgba(15,23,42,.18); }
+    .ok { display: none; margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: rgba(16,185,129,.16); color: #064e3b; font-weight: 700; }
+    @media (max-width: 720px) {
+      .top { align-items: flex-start; flex-direction: column; }
+      .row { grid-template-columns: 1fr; }
+      .lead { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <div class="top">
+        <div class="brand"><span class="brand-mark">IH</span><span>素材猎手 Image Hunter</span></div>
+        <div class="langs" aria-label="languages">🇨🇳 🇺🇸 🇯🇵 🇰🇷 🇫🇷 🇩🇪 🇪🇸</div>
+      </div>
+      <h1>您已卸载扩展程序</h1>
+      <p class="lead">我们希望改进素材猎手。请告诉我们出了什么问题。</p>
+
+      <form id="feedbackForm" action="https://formsubmit.co/support@hnchpower.cn" method="POST">
+        <input type="hidden" name="_subject" value="素材猎手卸载反馈" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_next" value="https://img.playbox.dpdns.org/uninstall?sent=1" />
+        <input type="hidden" name="extension" value="素材猎手 - Image Hunter" />
+        <input type="hidden" name="version" id="versionField" value="unknown" />
+        <input type="hidden" name="source" id="sourceField" value="uninstall" />
+
+        <label for="reason">卸载原因</label>
+        <select id="reason" name="reason" required>
+          <option value="一般问题">一般问题</option>
+          <option value="扫描不到图片">扫描不到图片</option>
+          <option value="下载失败">下载失败</option>
+          <option value="图片太多，筛选不方便">图片太多，筛选不方便</option>
+          <option value="安装或使用太复杂">安装或使用太复杂</option>
+          <option value="速度太慢">速度太慢</option>
+          <option value="找到了更好的工具">找到了更好的工具</option>
+          <option value="暂时不需要">暂时不需要</option>
+          <option value="其他">其他</option>
+        </select>
+
+        <label for="message">具体反馈</label>
+        <textarea id="message" name="message" placeholder="我卸载扩展程序是因为……"></textarea>
+
+        <div class="row">
+          <div>
+            <label for="pageUrl">出问题的网址，可不填</label>
+            <input id="pageUrl" name="page_url" placeholder="https://example.com/page" />
+          </div>
+          <div>
+            <label for="contact">联系方式，可不填</label>
+            <input id="contact" name="contact" placeholder="邮箱 / 微信 / 其他联系方式" />
+          </div>
+        </div>
+
+        <p class="hint">反馈会发送到 support@hnchpower.cn。首次使用该表单服务时，邮箱可能会收到一封确认邮件，确认后后续反馈会正常进入邮箱。</p>
+
+        <div class="actions">
+          <button type="submit">提交反馈</button>
+          <a class="btn secondary" href="https://img.playbox.dpdns.org/">返回官网</a>
+        </div>
+        <div id="ok" class="ok">感谢反馈，已经提交。</div>
+      </form>
+    </section>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const version = params.get('version') || params.get('v') || 'unknown';
+    const source = params.get('source') || 'uninstall';
+    document.getElementById('versionField').value = version;
+    document.getElementById('sourceField').value = source;
+    if (params.get('sent') === '1') {
+      document.getElementById('ok').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
