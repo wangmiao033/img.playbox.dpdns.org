@@ -2,16 +2,11 @@
   "manifest_version": 3,
   "name": "素材猎手 - Image Hunter",
   "short_name": "素材猎手",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；点击工具栏图标自动打开侧边栏。",
   "action": {
     "default_title": "素材猎手",
-    "default_icon": {
-      "16": "assets/icon16.png",
-      "32": "assets/icon32.png",
-      "48": "assets/icon48.png",
-      "128": "assets/icon128.png"
-    }
+    "default_icon": "assets/icon.svg"
   },
   "side_panel": {
     "default_path": "popup.html"
@@ -31,9 +26,9 @@
     "https://*/*"
   ],
   "icons": {
-    "16": "assets/icon16.png",
-    "32": "assets/icon32.png",
-    "48": "assets/icon48.png",
-    "128": "assets/icon128.png"
+    "16": "assets/icon.svg",
+    "32": "assets/icon.svg",
+    "48": "assets/icon.svg",
+    "128": "assets/icon.svg"
   }
 }
