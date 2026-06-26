@@ -1,6 +1,12 @@
 const MESSAGE_DOWNLOAD_MANY = "IH_DOWNLOAD_MANY";
 const REMOTE_CONFIG_URL = "https://img.playbox.dpdns.org/config.json";
 const FORMATS = ["ALL", "JPG", "PNG", "WEBP", "SVG", "GIF", "AVIF", "OTHER"];
+const FILTER_MODES = [
+  { id: "all", label: "全部", tip: "展示所有识别到的图片。" },
+  { id: "content", label: "正文图", tip: "优先展示文章正文/当前游戏相关图片，过滤右侧推荐和小图标。" },
+  { id: "big", label: "大图", tip: "优先展示大尺寸素材图。" },
+  { id: "icon", label: "图标", tip: "展示方形图标、头像、Logo 类素材。" }
+];
 const DEFAULT_CONFIG = {
   version: "local",
   ui: {
@@ -10,22 +16,24 @@ const DEFAULT_CONFIG = {
     emptyTips: {
       default: "没有匹配图片。先刷新网页，再点插件右上角刷新；也可以调低 Min size。",
       wechat: "微信文章图片通常懒加载。先滚到图片位置，再点插件右上角刷新。",
-      ali213: "如果没有图片，先等待页面图片加载完，再点插件右上角刷新。"
+      ali213: "如果只想下载本游戏图片，点「正文图」或「大图」，再点下载当前筛选。"
     }
   },
   generic: {
-    maxNodes: 3000,
-    maxHtmlMatches: 600,
+    maxNodes: 3600,
+    maxHtmlMatches: 700,
     attributes: ["src", "currentSrc", "href", "data-src", "data-original", "data-lazy", "data-url", "data-image", "data-img", "data-bg", "data-background", "data-actualsrc", "data-cover", "data-croporisrc", "data-img-src", "data-original-src"],
     imageUrlKeywords: [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif", "mmbiz.qpic.cn", "wx_fmt=", "imageMogr2"]
   },
   sites: {}
 };
-const state = { assets: [], filter: "ALL", minSize: 10, selected: new Set(), pageHost: "page", scanning: false, config: DEFAULT_CONFIG, siteRule: null };
+const state = { assets: [], filter: "ALL", mode: "all", minSize: 10, selected: new Set(), pageHost: "page", scanning: false, config: DEFAULT_CONFIG, siteRule: null };
 const $ = {};
 
 document.addEventListener("DOMContentLoaded", async () => {
   cache();
+  injectQuickFilterStyles();
+  createQuickFilters();
   bind();
   state.config = await loadRemoteConfig();
   state.minSize = Number(state.config?.ui?.minSizeDefault || 10);
@@ -53,6 +61,50 @@ function bind() {
   if ($.startTrialBtn) $.startTrialBtn.onclick = () => toast("测试版已开放下载，无需开通会员。");
   if ($.restoreBtn) $.restoreBtn.onclick = () => toast("测试版暂无恢复购买功能。");
   if ($.supportLink) $.supportLink.href = "https://img.playbox.dpdns.org/support";
+}
+
+function injectQuickFilterStyles() {
+  const style = document.createElement("style");
+  style.textContent = `
+    .quick-filter-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px}
+    .quick-filter-btn{border:0;border-radius:999px;padding:7px 6px;background:#c7ced9;color:#4f5c6d;font-size:12px;font-weight:700;white-space:nowrap}
+    .quick-filter-btn.active{background:#e8f1ff;color:#1677ff;box-shadow:0 0 0 1px rgba(22,119,255,.14) inset}
+    .mode-note{margin-top:7px;color:#64748b;font-size:11px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  `;
+  document.head.appendChild(style);
+}
+
+function createQuickFilters() {
+  const panel = document.querySelector(".filter-panel");
+  if (!panel || document.getElementById("quickFilterRow")) return;
+  const row = document.createElement("div");
+  row.id = "quickFilterRow";
+  row.className = "quick-filter-row";
+  FILTER_MODES.forEach(mode => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "quick-filter-btn";
+    btn.dataset.mode = mode.id;
+    btn.textContent = mode.label;
+    btn.onclick = () => {
+      state.mode = mode.id;
+      if (mode.id === "big" && state.minSize < 180) setMinSize(180);
+      renderAll();
+      toast(mode.tip);
+    };
+    row.appendChild(btn);
+  });
+  const note = document.createElement("div");
+  note.id = "modeNote";
+  note.className = "mode-note";
+  panel.appendChild(row);
+  panel.appendChild(note);
+}
+
+function setMinSize(value) {
+  state.minSize = value;
+  if ($.minSize) $.minSize.value = value;
+  if ($.minSizeValue) $.minSizeValue.textContent = value + "px";
 }
 
 async function loadRemoteConfig() {
@@ -119,11 +171,7 @@ async function scan() {
 
 function applySiteDefaults() {
   const next = Number(state.siteRule?.minSizeDefault || state.config?.ui?.minSizeDefault || 10);
-  if (Number.isFinite(next) && next !== state.minSize) {
-    state.minSize = next;
-    if ($.minSize) $.minSize.value = next;
-    if ($.minSizeValue) $.minSizeValue.textContent = next + "px";
-  }
+  if (Number.isFinite(next) && next !== state.minSize) setMinSize(next);
 }
 
 async function scanHtmlByFetch(url, host, config) {
@@ -139,12 +187,12 @@ async function scanHtmlByFetch(url, host, config) {
       const u = absolutize(raw, url);
       if (!u || seen.has(u) || !looksImage(u, config, rule)) return;
       seen.add(u);
-      assets.push({ url: u, source: "html", width: 0, height: 0, format: inferFormat(u) });
+      assets.push({ url: u, source: "html", width: 0, height: 0, format: inferFormat(u), context: "html", score: 1 });
     };
     const attrRe = new RegExp(`(?:${attrs.map(escapeRegex).join("|")})\\s*=\\s*["']([^"']+)["']`, "ig");
     let m;
     while ((m = attrRe.exec(html))) add(m[1]);
-    const max = Number(config?.generic?.maxHtmlMatches || 600);
+    const max = Number(config?.generic?.maxHtmlMatches || 700);
     const urlRe = /https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)[^"'\s<>]*)/ig;
     let n = 0;
     while ((m = urlRe.exec(html)) && n++ < max) add(m[0]);
@@ -164,8 +212,10 @@ function scanImagesInPage(config, hostFromTab) {
   const defaultAttrs = ["src", "currentSrc", "href", "data-src", "data-original", "data-lazy", "data-url", "data-image", "data-img", "data-bg", "data-background", "data-actualsrc", "data-cover", "data-croporisrc", "data-img-src", "data-original-src"];
   const rule = findRule(pageHost, config);
   const attrs = uniqueLocal([...(config?.generic?.attributes || defaultAttrs), ...((rule && rule.extraAttributes) || [])]);
-  const maxNodes = Number(config?.generic?.maxNodes || 3000);
+  const maxNodes = Number(config?.generic?.maxNodes || 3600);
   const selectors = rule && Array.isArray(rule.selectors) ? rule.selectors : ["img"];
+  const contentHints = (rule && rule.contentHints) || ["article", "content", "main", "detail", "text", "body", "post", "entry", "rich_media_content", "js_content"];
+  const excludeHints = (rule && rule.excludeHints) || ["side", "right", "rank", "hot", "recommend", "footer", "header", "nav", "menu", "search", "login", "app", "ad", "广告"];
 
   function findRule(host, cfg) {
     const rules = (cfg && cfg.sites) || {};
@@ -202,6 +252,30 @@ function scanImagesInPage(config, hostFromTab) {
     const m = s.split("?")[0].split("#")[0].match(/\.([a-z0-9]{2,5})$/i);
     return m ? m[1].toLowerCase() : "OTHER";
   }
+  function contextOf(el) {
+    let node = el;
+    let score = 0;
+    let ctx = "page";
+    let depth = 0;
+    while (node && node.nodeType === 1 && depth < 8) {
+      const label = `${node.tagName || ""} ${node.id || ""} ${node.className || ""}`.toLowerCase();
+      if (excludeHints.some(k => label.includes(String(k).toLowerCase()))) {
+        ctx = "side";
+        score -= 4;
+      }
+      if (contentHints.some(k => label.includes(String(k).toLowerCase()))) {
+        ctx = "content";
+        score += 6;
+      }
+      if (["ARTICLE", "MAIN"].includes(node.tagName)) {
+        ctx = "content";
+        score += 6;
+      }
+      node = node.parentElement;
+      depth += 1;
+    }
+    return { context: ctx, score };
+  }
   function add(raw, source, el) {
     const url = abs(raw);
     if (!url || !isImg(url) || seen.has(url)) return;
@@ -209,7 +283,10 @@ function scanImagesInPage(config, hostFromTab) {
     const rect = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
     const width = Math.round(Number((el && (el.naturalWidth || el.getAttribute && (el.getAttribute("data-w") || el.getAttribute("width")))) || (rect && rect.width) || 0));
     const height = Math.round(Number((el && (el.naturalHeight || el.getAttribute && (el.getAttribute("data-h") || el.getAttribute("height")))) || (rect && rect.height) || 0));
-    assets.push({ url, source, width, height, format: fmt(url) });
+    const ctx = contextOf(el);
+    const area = width * height;
+    const score = ctx.score + (area >= 120000 ? 4 : area >= 40000 ? 2 : 0) + (source === "selector" ? 2 : 0);
+    assets.push({ url, source, width, height, format: fmt(url), context: ctx.context, score });
   }
   function srcset(v) { return String(v || "").split(",").map(p => p.trim().split(/\s+/)[0]).filter(Boolean); }
 
@@ -233,7 +310,7 @@ function scanImagesInPage(config, hostFromTab) {
     } catch {}
   });
   const html = document.documentElement.innerHTML;
-  const max = Number(config?.generic?.maxHtmlMatches || 600);
+  const max = Number(config?.generic?.maxHtmlMatches || 700);
   (html.match(/https?:\/\/[^"'\s<>]+?(?:\.(?:jpg|jpeg|png|webp|gif|svg|avif|bmp|ico)[^"'\s<>]*)/ig) || []).slice(0, max).forEach(u => add(u, "html", null));
   (html.match(/https?:\/\/mmbiz\.qpic\.cn\/[^"'\s<>]+/ig) || []).slice(0, max).forEach(u => add(u, "wechat", null));
   return { pageHost, pageUrl: location.href, assets: assets.slice(0, Number(config?.ui?.maxDisplayImages || 800)) };
@@ -248,16 +325,18 @@ function normalizeAssets(items, host) {
     pageHost: host,
     id: hash((a.url || "") + i),
     format: norm(a.format || inferFormat(a.url)),
-    tag: classify(Number(a.width || 0), Number(a.height || 0))
+    tag: classify(Number(a.width || 0), Number(a.height || 0)),
+    context: a.context || "page",
+    score: Number(a.score || 0)
   })));
 }
 
 function sortAssets() {
   const mode = state.siteRule?.sortBy || state.config?.ui?.sortBy || "area_desc";
-  if (mode === "area_desc") state.assets.sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+  if (mode === "area_desc") state.assets.sort((a, b) => (b.score - a.score) || (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))));
 }
 
-function renderAll() { renderTabs(); renderUsage(); renderGrid(); buttons(); }
+function renderAll() { renderTabs(); renderUsage(); renderGrid(); buttons(); renderQuickFilters(); }
 function renderLoading() { $.grid.innerHTML = '<div class="empty-state"><h3>扫描中…</h3><p>正在读取当前网页图片和云端规则。</p></div>'; }
 function renderError(msg) { $.grid.innerHTML = `<div class="empty-state"><h3>无法扫描</h3><p>${escapeHtml(msg)}</p></div>`; }
 function renderTabs() {
@@ -272,6 +351,11 @@ function renderTabs() {
     b.onclick = () => { state.filter = f; renderAll(); };
     $.formatTabs.appendChild(b);
   });
+}
+function renderQuickFilters() {
+  document.querySelectorAll(".quick-filter-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.mode === state.mode));
+  const note = document.getElementById("modeNote");
+  if (note) note.textContent = FILTER_MODES.find(m => m.id === state.mode)?.tip || "";
 }
 function renderUsage() {
   const version = state.config?.version || "local";
@@ -304,7 +388,7 @@ function renderGrid() {
     dl.onclick = e => { e.stopPropagation(); download([a]); };
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.innerHTML = `<div><strong>${a.width && a.height ? `${a.width} × ${a.height}` : "unknown"}</strong><span class="tag">${a.tag}</span></div><span class="badge">${a.format}</span>`;
+    meta.innerHTML = `<div><strong>${a.width && a.height ? `${a.width} × ${a.height}` : "unknown"}</strong><span class="tag">${a.context === "content" ? "正文" : a.tag}</span></div><span class="badge">${a.format}</span>`;
     card.onclick = () => toggle(a.id);
     card.append(img, ck, dl, meta);
     $.grid.appendChild(card);
@@ -316,7 +400,20 @@ function getEmptyTip() {
   if (/ali213\.net$/.test(state.pageHost)) return tips.ali213 || tips.default || "没有匹配图片";
   return tips.default || "没有匹配图片";
 }
-function visible() { return state.assets.filter(a => (state.filter === "ALL" || a.format === state.filter) && (!a.width || !a.height || Math.min(a.width, a.height) >= state.minSize)); }
+function visible() {
+  return state.assets.filter(a => {
+    const area = (a.width || 0) * (a.height || 0);
+    const passesFormat = state.filter === "ALL" || a.format === state.filter;
+    const passesSize = !a.width || !a.height || Math.min(a.width, a.height) >= state.minSize;
+    const passesMode = state.mode === "all"
+      || (state.mode === "content" && (a.context === "content" || a.score >= 5) && !isSmallIcon(a))
+      || (state.mode === "big" && (area >= 80000 || a.width >= 500 || a.height >= 500) && !isSmallIcon(a))
+      || (state.mode === "icon" && isIconLike(a));
+    return passesFormat && passesSize && passesMode;
+  });
+}
+function isSmallIcon(a) { const area = (a.width || 0) * (a.height || 0); const ratio = a.width && a.height ? a.width / a.height : 1; return area > 0 && area <= 45000 && Math.abs(ratio - 1) < 0.25; }
+function isIconLike(a) { const ratio = a.width && a.height ? a.width / a.height : 1; return a.tag === "icon" || (a.width >= 64 && a.height >= 64 && Math.abs(ratio - 1) < 0.18 && Math.max(a.width, a.height) <= 600); }
 function buttons() { const v = visible(), n = state.selected.size; $.selectVisibleBtn.disabled = !v.length; $.downloadVisibleBtn.disabled = !v.length; $.downloadSelectedBtn.disabled = !n; $.downloadSelectedBtn.textContent = n ? `下载选中 ${n}` : "下载选中"; }
 function toggle(id) { state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id); renderGrid(); buttons(); }
 function selectVisible() { const v = visible(); const all = v.every(a => state.selected.has(a.id)); v.forEach(a => all ? state.selected.delete(a.id) : state.selected.add(a.id)); renderGrid(); buttons(); }
