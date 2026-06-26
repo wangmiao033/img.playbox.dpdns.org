@@ -1,14 +1,18 @@
 const MESSAGE_DOWNLOAD_MANY = "IH_DOWNLOAD_MANY";
+const FEEDBACK_URL = "https://img.playbox.dpdns.org/uninstall?version=0.2.8&source=extension";
 
 setupSidePanel();
 setExtensionIcon();
+setupFeedbackUrl();
 chrome.runtime.onInstalled.addListener(() => {
   setupSidePanel();
   setExtensionIcon();
+  setupFeedbackUrl();
 });
 chrome.runtime.onStartup.addListener(() => {
   setupSidePanel();
   setExtensionIcon();
+  setupFeedbackUrl();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -18,6 +22,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
       await setupSidePanel();
       await setExtensionIcon();
+      setupFeedbackUrl();
       const assets = Array.isArray(message.assets) ? message.assets : [];
       const folder = sanitizePathSegment(message.folder || "ImageHunter");
       const results = [];
@@ -49,6 +54,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true;
 });
+
+function setupFeedbackUrl() {
+  try {
+    chrome.runtime.setUninstallURL(FEEDBACK_URL);
+  } catch (error) {
+    console.warn("Image Hunter feedback URL setup skipped", error);
+  }
+}
 
 async function setupSidePanel() {
   try {
