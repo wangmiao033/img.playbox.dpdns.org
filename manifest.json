@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "素材猎手 - Image Hunter",
   "short_name": "素材猎手",
-  "version": "0.2.3",
-  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；测试版兼容更多图片站点。",
+  "version": "0.2.4",
+  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；支持远程配置规则热更新。",
   "action": {
     "default_popup": "popup.html",
     "default_title": "素材猎手"
