@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "素材猎手 - Image Hunter",
   "short_name": "素材猎手",
-  "version": "0.2.0",
-  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；官网与后端预留 playbox.dpdns.org 路径。",
+  "version": "0.2.1",
+  "description": "扫描当前网页图片，按格式和尺寸筛选，批量下载；支持微信公众号图片识别优化。",
   "action": {
     "default_popup": "popup.html",
     "default_title": "素材猎手"
