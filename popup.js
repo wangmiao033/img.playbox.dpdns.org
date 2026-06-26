@@ -1,6 +1,9 @@
 const MESSAGE_DOWNLOAD_MANY = "IH_DOWNLOAD_MANY";
 const REMOTE_CONFIG_URL = "https://img.playbox.dpdns.org/config.json";
 const FORMATS = ["ALL", "JPG", "PNG", "WEBP", "SVG", "GIF", "AVIF", "OTHER"];
+const DOWNLOAD_CONFIRM_TIMEOUT_MS = 5000;
+const DOWNLOAD_SELECTED_CONFIRM_THRESHOLD = 10;
+const DOWNLOAD_VISIBLE_CONFIRM_THRESHOLD = 20;
 const FILTER_MODES = [
   { id: "all", label: "全部", tip: "展示所有识别到的图片。" },
   { id: "content", label: "正文图", tip: "优先展示文章正文/当前游戏相关图片，过滤右侧推荐和小图标。" },
@@ -27,7 +30,19 @@ const DEFAULT_CONFIG = {
   },
   sites: {}
 };
-const state = { assets: [], filter: "ALL", mode: "all", minSize: 10, selected: new Set(), pageHost: "page", scanning: false, config: DEFAULT_CONFIG, siteRule: null };
+const state = {
+  assets: [],
+  filter: "ALL",
+  mode: "all",
+  minSize: 10,
+  selected: new Set(),
+  pageHost: "page",
+  scanning: false,
+  config: DEFAULT_CONFIG,
+  siteRule: null,
+  downloadConfirm: null,
+  downloadConfirmTimer: null
+};
 const $ = {};
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -50,13 +65,14 @@ function cache() {
 function bind() {
   $.refreshBtn.onclick = scan;
   $.minSize.oninput = () => {
+    resetDownloadConfirm(false);
     state.minSize = Number($.minSize.value) || 0;
     $.minSizeValue.textContent = state.minSize + "px";
     renderAll();
   };
   $.selectVisibleBtn.onclick = selectVisible;
-  $.downloadSelectedBtn.onclick = () => download(state.assets.filter(a => state.selected.has(a.id)));
-  $.downloadVisibleBtn.onclick = () => download(visible());
+  $.downloadSelectedBtn.onclick = () => handleDownloadWithConfirm("selected", state.assets.filter(a => state.selected.has(a.id)), DOWNLOAD_SELECTED_CONFIRM_THRESHOLD);
+  $.downloadVisibleBtn.onclick = () => handleDownloadWithConfirm("visible", visible(), DOWNLOAD_VISIBLE_CONFIRM_THRESHOLD);
   if ($.closePaywallBtn) $.closePaywallBtn.onclick = () => $.paywall.classList.add("hidden");
   if ($.startTrialBtn) $.startTrialBtn.onclick = () => toast("测试版已开放下载，无需开通会员。");
   if ($.restoreBtn) $.restoreBtn.onclick = () => toast("测试版暂无恢复购买功能。");
@@ -70,6 +86,7 @@ function injectQuickFilterStyles() {
     .quick-filter-btn{border:0;border-radius:999px;padding:7px 6px;background:#c7ced9;color:#4f5c6d;font-size:12px;font-weight:700;white-space:nowrap}
     .quick-filter-btn.active{background:#e8f1ff;color:#1677ff;box-shadow:0 0 0 1px rgba(22,119,255,.14) inset}
     .mode-note{margin-top:7px;color:#64748b;font-size:11px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .soft-btn.confirming,.primary-btn.confirming{background:#ff9f1a!important;color:#fff!important;border-color:#ff9f1a!important;box-shadow:0 0 0 2px rgba(255,159,26,.18)}
   `;
   document.head.appendChild(style);
 }
@@ -87,6 +104,7 @@ function createQuickFilters() {
     btn.dataset.mode = mode.id;
     btn.textContent = mode.label;
     btn.onclick = () => {
+      resetDownloadConfirm(false);
       state.mode = mode.id;
       if (mode.id === "big" && state.minSize < 180) setMinSize(180);
       renderAll();
@@ -131,6 +149,7 @@ function mergeConfig(base, remote) {
 
 async function scan() {
   if (state.scanning) return;
+  resetDownloadConfirm(false);
   state.scanning = true;
   state.assets = [];
   state.selected.clear();
@@ -348,7 +367,7 @@ function renderTabs() {
     const b = document.createElement("button");
     b.className = "tab" + (state.filter === f ? " active" : "");
     b.textContent = `${f === "ALL" ? "All" : f} (${count[f] || 0})`;
-    b.onclick = () => { state.filter = f; renderAll(); };
+    b.onclick = () => { resetDownloadConfirm(false); state.filter = f; renderAll(); };
     $.formatTabs.appendChild(b);
   });
 }
@@ -414,9 +433,44 @@ function visible() {
 }
 function isSmallIcon(a) { const area = (a.width || 0) * (a.height || 0); const ratio = a.width && a.height ? a.width / a.height : 1; return area > 0 && area <= 45000 && Math.abs(ratio - 1) < 0.25; }
 function isIconLike(a) { const ratio = a.width && a.height ? a.width / a.height : 1; return a.tag === "icon" || (a.width >= 64 && a.height >= 64 && Math.abs(ratio - 1) < 0.18 && Math.max(a.width, a.height) <= 600); }
-function buttons() { const v = visible(), n = state.selected.size; $.selectVisibleBtn.disabled = !v.length; $.downloadVisibleBtn.disabled = !v.length; $.downloadSelectedBtn.disabled = !n; $.downloadSelectedBtn.textContent = n ? `下载选中 ${n}` : "下载选中"; }
-function toggle(id) { state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id); renderGrid(); buttons(); }
-function selectVisible() { const v = visible(); const all = v.every(a => state.selected.has(a.id)); v.forEach(a => all ? state.selected.delete(a.id) : state.selected.add(a.id)); renderGrid(); buttons(); }
+function buttons() {
+  const v = visible(), n = state.selected.size;
+  $.selectVisibleBtn.disabled = !v.length;
+  $.downloadVisibleBtn.disabled = !v.length;
+  $.downloadSelectedBtn.disabled = !n;
+  $.downloadSelectedBtn.textContent = state.downloadConfirm?.kind === "selected" ? `再次确认下载（${state.downloadConfirm.count}张）` : (n ? `下载选中 ${n}` : "下载选中");
+  $.downloadVisibleBtn.textContent = state.downloadConfirm?.kind === "visible" ? `再次确认下载（${state.downloadConfirm.count}张）` : "下载当前筛选";
+  $.downloadSelectedBtn.classList.toggle("confirming", state.downloadConfirm?.kind === "selected");
+  $.downloadVisibleBtn.classList.toggle("confirming", state.downloadConfirm?.kind === "visible");
+}
+function handleDownloadWithConfirm(kind, assets, threshold) {
+  const count = assets.length;
+  if (!count) return toast("没有可下载的图片");
+  const signature = `${kind}:${count}:${assets.map(a => a.id).slice(0, 8).join(",")}`;
+  const now = Date.now();
+  if (count > threshold) {
+    if (state.downloadConfirm && state.downloadConfirm.signature === signature && state.downloadConfirm.expiresAt > now) {
+      resetDownloadConfirm(false);
+      buttons();
+      return download(assets);
+    }
+    state.downloadConfirm = { kind, count, signature, expiresAt: now + DOWNLOAD_CONFIRM_TIMEOUT_MS };
+    clearTimeout(state.downloadConfirmTimer);
+    state.downloadConfirmTimer = setTimeout(() => resetDownloadConfirm(true), DOWNLOAD_CONFIRM_TIMEOUT_MS);
+    buttons();
+    return toast(`将下载 ${count} 张图片，请 5 秒内再次点击确认`);
+  }
+  resetDownloadConfirm(false);
+  return download(assets);
+}
+function resetDownloadConfirm(updateButtons = true) {
+  if (state.downloadConfirmTimer) clearTimeout(state.downloadConfirmTimer);
+  state.downloadConfirmTimer = null;
+  state.downloadConfirm = null;
+  if (updateButtons && $.downloadSelectedBtn && $.downloadVisibleBtn) buttons();
+}
+function toggle(id) { resetDownloadConfirm(false); state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id); renderGrid(); buttons(); }
+function selectVisible() { resetDownloadConfirm(false); const v = visible(); const all = v.every(a => state.selected.has(a.id)); v.forEach(a => all ? state.selected.delete(a.id) : state.selected.add(a.id)); renderGrid(); buttons(); }
 async function download(assets) { if (!assets.length) return toast("没有可下载的图片"); const r = await chrome.runtime.sendMessage({ type: MESSAGE_DOWNLOAD_MANY, assets, folder: "ImageHunter" }); toast(r && r.ok ? `已提交下载 ${r.downloaded} 张` : "下载失败"); }
 function getSiteRule(host, config) { const rules = config?.sites || {}; const keys = Object.keys(rules); return rules[host] || keys.map(k => host === k || host.endsWith("." + k) ? rules[k] : null).find(Boolean) || null; }
 function status(t) { $.pageStatus.textContent = t; }
