@@ -10,7 +10,7 @@
     <main class="app">
       <header class="topbar">
         <div class="brand-mark" aria-hidden="true">
-          <img src="assets/icon48.png" alt="" />
+          <img src="assets/icon.svg" alt="" />
         </div>
         <div class="brand-text">
           <h1>素材猎手</h1>
@@ -27,7 +27,20 @@
             <strong id="minSizeValue">10px</strong>
           </div>
           <input id="minSize" type="range" min="0" max="1000" step="10" value="10" />
+          <div class="size-presets" aria-label="尺寸快捷筛选">
+            <button type="button" data-size="0">全部尺寸</button>
+            <button type="button" data-size="100">100+</button>
+            <button type="button" data-size="200">200+</button>
+            <button type="button" data-size="500">500+</button>
+          </div>
         </div>
+      </section>
+
+      <section id="statsBar" class="stats-bar" aria-label="筛选统计">
+        <span>总数 <b id="totalCount">0</b></span>
+        <span>可见 <b id="visibleCount">0</b></span>
+        <span>已选 <b id="selectedCount">0</b></span>
+        <span id="modeName">全部</span>
       </section>
 
       <section class="action-row">
