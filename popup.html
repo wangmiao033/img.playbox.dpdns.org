@@ -28,7 +28,7 @@
           </div>
           <input id="minSize" type="range" min="0" max="1000" step="10" value="10" />
           <div class="size-presets" aria-label="尺寸快捷筛选">
-            <button type="button" data-size="0">全部尺寸</button>
+            <button type="button" data-size="0">全部</button>
             <button type="button" data-size="100">100+</button>
             <button type="button" data-size="200">200+</button>
             <button type="button" data-size="500">500+</button>
@@ -60,21 +60,9 @@
         <p class="trial-pill">本地演示：3 天试用 · 可接 Stripe / Paddle</p>
 
         <div class="plans" role="radiogroup" aria-label="套餐选择">
-          <label class="plan">
-            <input type="radio" name="plan" value="monthly" />
-            <span>Monthly</span>
-            <strong>$ 2.99 <em>/ month</em></strong>
-          </label>
-          <label class="plan active">
-            <input type="radio" name="plan" value="yearly" checked />
-            <span>Yearly <b>Best</b></span>
-            <strong>$ 14.99 <em>/ year</em></strong>
-          </label>
-          <label class="plan">
-            <input type="radio" name="plan" value="lifetime" />
-            <span>Lifetime</span>
-            <strong>$ 29.99 <em>/ lifetime</em></strong>
-          </label>
+          <label class="plan"><input type="radio" name="plan" value="monthly" /><span>Monthly</span><strong>$ 2.99 <em>/ month</em></strong></label>
+          <label class="plan active"><input type="radio" name="plan" value="yearly" checked /><span>Yearly <b>Best</b></span><strong>$ 14.99 <em>/ year</em></strong></label>
+          <label class="plan"><input type="radio" name="plan" value="lifetime" /><span>Lifetime</span><strong>$ 29.99 <em>/ lifetime</em></strong></label>
         </div>
 
         <button id="startTrialBtn" class="trial-btn" type="button">Start 3-Day Free Trial</button>
@@ -90,5 +78,47 @@
     <div id="toast" class="toast hidden" role="status"></div>
     <script src="config.js"></script>
     <script src="popup.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const grid = $("grid");
+        const minSize = $("minSize");
+        const minSizeValue = $("minSizeValue");
+        const totalCount = $("totalCount");
+        const visibleCount = $("visibleCount");
+        const selectedCount = $("selectedCount");
+        const modeName = $("modeName");
+        const pageStatus = $("pageStatus");
+        const modeMap = { all: "全部", content: "正文图", big: "大图", icon: "图标" };
+
+        function updateStats() {
+          const statusText = pageStatus ? pageStatus.textContent : "";
+          const totalMatch = statusText.match(/(\d+)\s*images/);
+          if (totalCount) totalCount.textContent = totalMatch ? totalMatch[1] : String(document.querySelectorAll(".card").length || 0);
+          if (visibleCount) visibleCount.textContent = String(document.querySelectorAll(".card").length || 0);
+          if (selectedCount) selectedCount.textContent = String(document.querySelectorAll(".card.selected").length || 0);
+          const active = document.querySelector(".quick-filter-btn.active");
+          if (modeName) modeName.textContent = active ? (modeMap[active.dataset.mode] || active.textContent) : "全部";
+          document.querySelectorAll(".size-presets button").forEach((btn) => {
+            btn.classList.toggle("active", Number(btn.dataset.size) === Number(minSize && minSize.value || 0));
+          });
+        }
+
+        document.querySelectorAll(".size-presets button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            if (!minSize) return;
+            minSize.value = btn.dataset.size;
+            if (minSizeValue) minSizeValue.textContent = `${btn.dataset.size}px`;
+            minSize.dispatchEvent(new Event("input", { bubbles: true }));
+            setTimeout(updateStats, 80);
+          });
+        });
+
+        if (grid) new MutationObserver(() => setTimeout(updateStats, 30)).observe(grid, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+        if (pageStatus) new MutationObserver(updateStats).observe(pageStatus, { childList: true, subtree: true, characterData: true });
+        document.addEventListener("click", () => setTimeout(updateStats, 80));
+        updateStats();
+      })();
+    </script>
   </body>
 </html>
