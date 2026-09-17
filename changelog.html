@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>更新日志 - 素材猎手 Image Hunter</title>
+  <meta name="description" content="素材猎手 Image Hunter 更新日志，记录每个版本的功能、修复和配置热更内容。" />
+  <link rel="stylesheet" href="./assets/site.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <a class="logo" href="/" aria-label="素材猎手首页"><span class="logo-mark">IH</span><span>素材猎手 Image Hunter</span></a>
+      <div class="nav-links">
+        <a href="/">首页</a>
+        <a href="/changelog">更新日志</a>
+        <a href="/privacy">隐私政策</a>
+        <a href="/support">支持</a>
+      </div>
+    </nav>
+
+    <section class="hero" style="grid-template-columns:1fr;">
+      <div>
+        <span class="badge">Release Notes · Image Hunter</span>
+        <h1>更新日志</h1>
+        <p class="lead">这里记录插件本体版本和远程配置热更内容。插件本体升级通常需要重新下载测试包；config.json 规则调整属于热更，点插件右上角刷新即可生效。</p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/wangmiao033/img.playbox.dpdns.org/archive/refs/heads/plugin.zip">下载最新版测试包</a>
+          <a class="btn secondary" href="/config.json" target="_blank" rel="noreferrer">查看远程配置</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>插件版本</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>v0.3.2 · UI 升级</h3>
+          <p>新增统计栏，显示总数、可见数量、已选数量和当前模式。新增快捷尺寸筛选：全部、100+、200+、500+。优化侧边栏布局、图片卡片样式、选中高亮和二次确认按钮视觉。</p>
+        </article>
+        <article class="card">
+          <h3>v0.3.1 · 下载二次确认</h3>
+          <p>下载当前筛选超过 20 张时，需要 5 秒内再次点击确认。下载选中超过 10 张时，也需要二次确认。切换筛选、调整尺寸、重新扫描会自动取消确认状态。</p>
+        </article>
+        <article class="card">
+          <h3>v0.3.0 · 定向筛选</h3>
+          <p>新增全部、正文图、大图、图标四个快捷模式。用于快速过滤右侧推荐、排行榜、小图标和广告碎图，优先下载当前文章或当前游戏相关图片。</p>
+        </article>
+        <article class="card">
+          <h3>v0.2.9 · 侧边栏高度修复</h3>
+          <p>修复侧边栏只显示上半部分的问题。将插件面板改为 100vh 高度，图片列表自适应填满右侧区域。</p>
+        </article>
+        <article class="card">
+          <h3>v0.2.8 · 卸载反馈</h3>
+          <p>新增卸载反馈跳转。用户卸载后打开反馈页，可填写卸载原因和具体问题，反馈发送到 support@hnchpower.cn。</p>
+        </article>
+        <article class="card">
+          <h3>v0.2.7 · 图标改造</h3>
+          <p>新增 SVG 图标资源，并在 manifest 中切换到统一图标配置，用于扩展管理页和工具栏图标展示。</p>
+        </article>
+        <article class="card">
+          <h3>v0.2.6 · 侧边栏打开</h3>
+          <p>接入 Chrome Side Panel。点击浏览器右上角插件图标后，插件在浏览器侧边栏打开，而不是普通小弹窗。</p>
+        </article>
+        <article class="card">
+          <h3>v0.2.4 · 远程配置热更</h3>
+          <p>新增 config.json 远程规则系统。站点识别规则、默认尺寸、提示文案和部分筛选规则可以通过服务器配置热更。</p>
+        </article>
+        <article class="card">
+          <h3>v0.2.3 · 扫描稳定性增强</h3>
+          <p>重写图片扫描逻辑，增加 HTML 兜底扫描、懒加载图片识别、微信公众号 mmbiz 图片识别和更多图片属性兼容。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>远程配置热更</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>config 2026.06.26.2</h3>
+          <p>游侠网 m.ali213.net 默认 Min size 提高到 80px，减少 120×16、广告碎图、导航小图等干扰。正文图和大图模式更适合下载当前游戏素材。</p>
+        </article>
+        <article class="card">
+          <h3>config 2026.06.26.1</h3>
+          <p>增加游侠网正文区域识别和排除规则，优先识别 article、content、main、detail、news_con 等区域，排除 side、rank、recommend、nav、ad 等区域。</p>
+        </article>
+        <article class="card">
+          <h3>config 2026.06.24.1</h3>
+          <p>建立第一版远程配置系统，包含通用图片规则、微信规则、ali213 专用规则、默认 Min size、排序规则和空结果提示文案。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>当前能力清单</h2>
+      <div class="grid">
+        <article class="card"><h3>网页图片扫描</h3><p>支持 img、srcset、picture、CSS background-image、meta image、链接图片、懒加载属性和 HTML 兜底扫描。</p></article>
+        <article class="card"><h3>侧边栏工作台</h3><p>点击插件图标后在 Chrome 侧边栏打开，适合边看网页边筛选素材。</p></article>
+        <article class="card"><h3>格式筛选</h3><p>支持 All、JPG、PNG、WEBP、SVG、GIF、AVIF、OTHER 分类。</p></article>
+        <article class="card"><h3>定向模式</h3><p>支持全部、正文图、大图、图标，快速定位当前游戏文章内素材。</p></article>
+        <article class="card"><h3>尺寸过滤</h3><p>支持 Min size 滑杆和快捷尺寸筛选，过滤小碎图、广告条、导航图。</p></article>
+        <article class="card"><h3>批量下载保护</h3><p>大批量下载前需要二次确认，降低误下载几百张图片的风险。</p></article>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>© 2026 Image Hunter. All rights reserved.</span>
+      <span>img.playbox.dpdns.org</span>
+    </footer>
+  </div>
+</body>
+</html>
