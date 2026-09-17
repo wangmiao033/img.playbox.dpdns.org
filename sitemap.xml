@@ -2,14 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://img.playbox.dpdns.org/</loc>
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-09-17</lastmod>
+  </url>
+  <url>
+    <loc>https://img.playbox.dpdns.org/changelog</loc>
+    <lastmod>2026-09-17</lastmod>
   </url>
   <url>
     <loc>https://img.playbox.dpdns.org/privacy</loc>
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-09-17</lastmod>
   </url>
   <url>
     <loc>https://img.playbox.dpdns.org/support</loc>
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-09-17</lastmod>
   </url>
 </urlset>
